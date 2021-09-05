@@ -2,6 +2,7 @@
 #include "sqldump.h"
 
 int main(){
+	create_dir();
 	dead_video_changes();
 	player_color();
 	the_elite_ltk_videos();
@@ -10,6 +11,14 @@ int main(){
 	tutorial_videos();
 }
 
+void create_dir(){
+	mkdir("dead-video-changes");
+	mkdir("player-colors");
+	mkdir("the-elite-ltk-videos");
+	mkdir("the-elite-single-segment-videos");
+	mkdir("the-elite-videos");
+	mkdir("tutorial-videos");
+}
 
 void dead_video_changes(){
 	system("mysqldump -u root -p  dead-video-changes > dead-video-changes/changes.sql");

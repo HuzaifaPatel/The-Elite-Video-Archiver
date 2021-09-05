@@ -1,3 +1,4 @@
+void create_dir();
 void dead_video_changes();
 void player_color();
 void the_elite_ltk_videos();
