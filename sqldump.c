@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <sys/stat.h>
 #include "sqldump.h"
 
 int main(){
@@ -12,12 +13,12 @@ int main(){
 }
 
 void create_dir(){
-	mkdir("dead-video-changes");
-	mkdir("player-colors");
-	mkdir("the-elite-ltk-videos");
-	mkdir("the-elite-single-segment-videos");
-	mkdir("the-elite-videos");
-	mkdir("tutorial-videos");
+	mkdir("dead-video-changes", 0700);
+	mkdir("player-colors", 0700);
+	mkdir("the-elite-ltk-videos", 0700);
+	mkdir("the-elite-single-segment-videos", 0700);
+	mkdir("the-elite-videos", 0700);
+	mkdir("tutorial-videos", 0700);
 }
 
 void dead_video_changes(){
