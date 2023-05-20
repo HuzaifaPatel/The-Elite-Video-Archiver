@@ -1,555 +1,269 @@
 import httplib2
 from bs4 import BeautifulSoup, SoupStrainer
 import time
-import feedparser
 import os
-import youtube_dl
-import requests # for def get_time_info():
-from tqdm import tqdm
-import refresh
-import boto3
-import database
+import yt_dlp as youtube_dl
+import requests
+from datetime import datetime
+import config
+
+year = "1999"
+month = "04"
+
+class Video:
+	def __init__(self):
+		self.base_url = "https://rankings.the-elite.net"
+		self.rankings_url = None
+		self.rankings_id = None
+		self.youtube_url = None
+		self.player = None
+		self.stage = None
+		self.difficulty = None
+		self.time_in_seconds = None
+		self.regular_time = None
+		self.game = None
+		self.filename = None
+		self.date_achieved = None
+		self.dead_url = None
+		self.extension = None
+		self.get_rankings_url(year, month)
 
 
-# my_cursor = mydb.cursor()
-my_cursor = database.local_database().cursor()
-
-#__________________________________________________________________________________________________
-#lists
-
-rankings_url = [] 	#all urls on pr history page
-filtered_url = [] 	#urls on pr history with video (filtered rankings url)
-youtube_url  = [] 	#youtube video url
-time_info    = [] 	#time info on rankings
-rankings_id  = []   #rankings url id
-
-#__________________________________________________________________________________________________
-#filename lists
-
-player = []
-stage = []
-difficulty = []
-time_in_seconds = []
-regular_time = []
-game = []
-filename = []
-date_achieved = []
-dead_url = []
-extensions = []
-
-#__________________________________________________________________________________________________
-
-def get_time_url(year, month): #GETS ALL Times from www.rankings.the-elite.net/history/year/month
-	
-	url ='https://rankings.the-elite.net/history/' + str(year) + '/' + str(month)
-	http = httplib2.Http()
-	status, response = http.request(url)
-	history = BeautifulSoup(response, 'html.parser')
-
-	for proven_times in tqdm(history.find_all('a', href=True), desc = "Getting All Rankings URLS"):
-
-		if 'time' in proven_times['href']:
-			rankings_url.append("https://rankings.the-elite.net" + proven_times['href'])
-			# time.sleep(0.05)
-
-def remove_duplicates():
-
-	global rankings_url
-	final_list = []
-
-	for url in rankings_url: 
-		if url not in final_list: 
-			final_list.append(url) 	
-
-	rankings_url.clear()
-
-	for i in range(len(final_list)):
-		rankings_url.append(final_list[i])
-
-	rankings_url.reverse()
-
-def get_yt_url():
-
-	print("")
-
-	for speedrun_with_video in tqdm(range(0,len(rankings_url)), desc = "Getting Youtube URLS"):
-
+	def get_rankings_url(self, year, month): #get all times from www.rankings.the-elite.net/history/year/month
+		rankings_url = []
 		http = httplib2.Http()
-		status, response = http.request(rankings_url[speedrun_with_video])
+		status, response = http.request(self.base_url + '/history/' +str(year) + '/' + str(month))
+		history = BeautifulSoup(response, 'html.parser')
+
+		for proven_time in history.find_all('a', href=True):
+			if 'time' in proven_time['href']:
+				# if not int(self.check_if_dupe(proven_time['href'].split("/")[-1])): # CHECK IF DUPE RIGHT AWAY. SAVE TIME.
+				if self.has_video(self.base_url + proven_time['href']):
+					self.rankings_url = self.base_url + proven_time['href']
+					self.rankings_id = proven_time['href'].split("/")[-1]
+					self.get_time_info()
+					self.make_game()
+					self.make_filename()
+					self.make_folder()
+					self.download_video()
+					self.get_extension()
+					self.insert_file()
+
+
+
+	def has_video(self, rankings_url):
+		http = httplib2.Http()
+		status, response = http.request(rankings_url)
 		video = BeautifulSoup(response, 'html.parser')
-		# time.sleep(.1)
-		# time.sleep(0.01)
 
-		for yt_video in video.find_all('a', href=True):
+		for a_tag in video.find_all('a', href=True):
+			if 'youtube.com' in a_tag['href'] or 'twitch.tv/videos' in a_tag['href'] or 'activigor.com' in a_tag['href'] or 'thengamer.com' in a_tag['href']:
+				self.youtube_url = a_tag['href']
+				return True;
+		return False;
 
-			if 'youtube.com' in yt_video['href'] or 'twitch.tv/videos' in yt_video['href'] or 'activigor.com' in yt_video['href'] or 'thengamer.com/' in yt_video['href']:
-				youtube_url.append(yt_video['href'])
-				filtered_url.append(rankings_url[speedrun_with_video])
-				#print("Found Video")
 
-	#print("Got YouTube URL")
-	print("")
 
-def get_time_info():
+	def get_time_info(self):
+			request = requests.get(self.rankings_url)
+			html_content = request.text
+			soup = BeautifulSoup(html_content, 'lxml')
+	
+			index_info = soup.find_all('title')[0].string[:-21]
 
-	for proven_times in tqdm(range(0,len(filtered_url)), desc = "Getting Time Info"):
+			self.get_date(soup)
+			self.get_name(index_info)
+			self.get_difficulty(index_info)
+			self.get_time_in_seconds(index_info)
 
-		request = requests.get(filtered_url[proven_times])
-		html_content = request.text
-		soup = BeautifulSoup(html_content, 'lxml')
 
-		index_info = soup.find_all('title')[0]
-		index_info = index_info.string
-		index_info = index_info[:-21]
-		time_info.append(index_info)
-
-#________________________________________________________________________________________
-#Code for getting date achieved. I made it in this function so i don't have to request the rankings so many times 
-
-		date = soup.find_all(['li','strong'])#[51]
-		date = str(date)
+	def get_date(self, soup):
+		date = str(soup.find_all(['li','strong']))
 		date = date[date.find("<li><strong>Achieved:</strong>")+31:]
-		date = date[0:date.find("</li>")]
-
-		date = date.split()
-		month = date[1]
-		month = month[0:3]
-		date[1] = month
-
-		from datetime import datetime
-
+		date = date[0:date.find("</li>")].split()
 		date = date[0] + "-" + date[1] + "-" + date[2] 
-		date = datetime.strptime(date, '%d-%b-%Y')
+		date = datetime.strptime(date, '%d-%B-%Y')
 		date = date.strftime("%Y-%m-%d")
 
-		date_achieved.append(date)	
-
-		# time.sleep(0.05)
-
-def get_rankings_url_id():
-
-	for i in range(len(filtered_url)):
-		rankings_url = filtered_url[i]
-		rankings_url = rankings_url.split("/")
-		ranking_id = int(rankings_url[len(rankings_url)-1])
-		ranking_id = int(ranking_id)
-
-		rankings_id.append(ranking_id)
+		self.date_achieved = date
 
 
-def make_player_name():
 
-	global player
-	global stage
 
-	for i in time_info:
-		by = i.index("by")
-		name = i[by+3:]
+	def get_name(self, index_info):	
+		by = index_info.index("by")
+		name = index_info[by+3:]
 		name = name.replace(" ","_")
-		player.append(name)
+		self.player = name
 
 
-def make_difficulty_and_stage():
-
-	global difficulty
-	global stage
-
-	for x in time_info:
-		try:
-			if x.index("Perfect Agen"):
-				difficulty.append("PA")
-				checker = x.index("Perfect Agen")
-				get_stage = x
-				get_stage = get_stage[0:checker-1]
-				get_stage = get_stage.lower()
-				stage.append(get_stage)
-		except:
-			try:	
-				if x.index("Secret"):
-					difficulty.append("SA")
-					checker = x.index("Secret")
-					get_stage = x
-					get_stage = get_stage[0:checker-1]
-					get_stage = get_stage.lower()
-					stage.append(get_stage)
-			except:
-				try:
-					if x.index("Special"):
-						difficulty.append("SA")
-						checker = x.index("Special")
-						get_stage = x
-						get_stage = get_stage[0:checker-1]
-						get_stage = get_stage.lower()
-						stage.append(get_stage)
-				except:
-					try:
-						if x.index("00 Agen"):
-							difficulty.append("00A")
-							checker = x.index("00")
-							get_stage = x
-							get_stage = get_stage[0:checker-1]
-							get_stage = get_stage.lower()
-							stage.append(get_stage)
-					except:
-						try:
-							if x.index("Agent"):
-								difficulty.append("Agent")
-								checker = x.index("Agent")
-								get_stage = x
-								get_stage = get_stage[0:checker-1]
-								get_stage = get_stage.lower()
-								stage.append(get_stage)
-						except:
-							pass
 
 
-def make_time():
-
-	for i in range(len(time_info)):
-		x = time_info[i]
-		x = x.index("Agent")
-		x = x + 6
-
-		c = time_info[i]
-		c = c.index("by")
-		c = c - 1
-
-		f = time_info[i]
-		f = f[x:c]
-		# print(f)
-
-		if f == "N/A": # if player submits a time = to 20:00
-			f = ("20:00")
-
-
-		if f.count(":") == 2:
-			h, m, s = f.split(":")
-			time = (3600 * int(h)) + (int(m) * 60) + int(s)
+	def get_difficulty(self, index_info):
+		if "Secret Agent" in index_info.split("by")[0]:
+			self.difficulty = "SA"
+			self.stage = index_info[0:index_info.index("Secret")-1].lower()
+		elif "Special Agent" in index_info.split("by")[0]:
+			self.difficulty = "SA"
+			self.stage = index_info[0:index_info.index("Special")-1].lower()
+		elif "00" in index_info.split("by")[0]:
+			self.difficulty = "00 Agent"
+			self.stage = index_info[0:index_info.index("00")-1].lower()
+		elif "Perfect" in index_info.split("by")[0]:
+			self.difficulty = "Perfect Agent"
+			self.stage = index_info[0:index_info.index("Perfect Agen")-1].lower()
 		else:
-			s = f.index(":")
-
-			minute = f[0:s]
-			minute = int(minute)
-			minute = minute * 60
-			
-			seconds = f[s+1:]
-			seconds = int(seconds)
-
-			time = minute + seconds
-
-		time = str(time)
-
-		if len(time) == 3:
-			time = "0" + time
-		if len(time) == 2:
-			time = "00" + time
-		if len(time) == 1:
-			time = "000" + time
-
-		time_in_seconds.append(time)
+			self.difficulty = "Agent"
+			self.stage = index_info[0:index_info.index("Agent")-1].lower()
 
 
-def make_regular_time():
 
-	for i in range(len(time_info)):
+	def get_time_in_seconds(self, index_info):
+		front_slice = index_info.index("Agent") + 6
+		back_slice = index_info.index("by") - 1
 
+		regular_time = index_info[front_slice:back_slice]
+		time_in_seconds = None
 
-		seconds = time_in_seconds[i]
+		if regular_time == "N/A": # if player submits a time = 20:00
+			regular_time = "20:00"
 
-		if(seconds == "N/A"): # if player submits a time = to 20:00
-			regular_time.append("20:00")
-			continue
-
-		reg_time = ""
-
-		if int(time_in_seconds[i]) >= 3600:
-			reg_time = time.strftime("%H:%M:%S", time.gmtime(int(time_in_seconds[i])))
+		if regular_time.count(":") == 2:
+			h, m, s = regular_time.split(":")
+			time_in_seconds = (3600 * int(h)) + (int(m) * 60) + int(s)
 		else:
-			reg_time = time.strftime("%M:%S", time.gmtime(int(time_in_seconds[i])))
+			m,s = regular_time.split(":")
+			time_in_seconds = str((int(m) * 60) + int(s))
+
+		if len(regular_time) == 3:
+			regular_time = "0" + regular_time
+		if len(regular_time) == 2:
+			regular_time = "00" + regular_time
+		if len(regular_time) == 1:
+			regular_time = "000" + regular_time
+
+		self.time_in_seconds = time_in_seconds
+		self.make_regular_time(time_in_seconds)
 
 
-		reg_time = reg_time.split(":")
-
-		for i in range(1):
-			reg_time[0] = str(int(reg_time[0]))
-
-		reg_time = ":".join(reg_time)
-		regular_time.append(reg_time)
 
 
-def make_game():
 
-	global stage
-	global game
 
-	for i in range(len(time_info)):
+	def make_regular_time(self, _time):
+		if(_time == "N/A"): # if player submits a time = to 20:00
+			self.regular_time = "20:00"
+		elif int(_time) >= 3600:
+			self.regular_time = time.strftime("%H:%M:%S", time.gmtime(int(_time)))
+		else:
+			self.regular_time = time.strftime("%M:%S", time.gmtime(int(_time)))
 
+
+
+
+
+	def make_game(self):
 		# G O L D E N E Y E 0 0 7
 
-		if stage[i] in ("surface 1", "bunker 1", "surface 2", "bunker 2"):
-			stage[i] = stage[i].replace(" ","")
+		if self.stage in ("surface 1", "bunker 1", "surface 2", "bunker 2"):
+			self.stage = self.stage.replace(" ","")
 
 		# P E R F E C T D A R K
 
-		if stage[i] == "air force one":
-			stage[i] = "af1"
+		if self.stage == "air force one":
+			self.stage = "af1"
 
-		if stage[i] in ("air base", "crash site", "deep sea", "attack ship", "skedar ruins", "maian sos"):
-			stage[i] = stage[i].replace(" ","-")
+		if self.stage in ("air base", "crash site", "deep sea", "attack ship", "skedar ruins", "maian sos"):
+			self.stage = self.stage.replace(" ","-")
 
-		if stage[i] == "pelagic ii":
-			stage[i] = "pelagic"
+		if self.stage == "pelagic ii":
+			self.stage = "pelagic"
 
-		if stage[i] == "war!":
-			stage[i] = "war"
+		if self.stage == "war!":
+			self.stage = "war"
 
-		if stage[i] in ("dam", "facility", "runway", "surface1", 
+		if self.stage in ("dam", "facility", "runway", "surface1", 
 						"bunker1", "silo", "frigate", "surface2", 
 						"bunker2", "statue", "archives","streets", 
 						"depot", "train", "jungle", "control", 
 						"caverns", "cradle", "aztec", "egypt"):
-			game.append("ge")
+			self.game = 'ge'
 
-		if stage[i] in ("defection", "investigation", "extraction", 
+		if self.stage in ("defection", "investigation", "extraction", 
 						"villa", "chicago", "g5", "infiltration", 
 						"rescue", "escape", "air-base","af1", 
 						"crash-site", "pelagic", "deep-sea", "ci", 
 						"attack-ship", "skedar-ruins", "mbr", 
 						"maian-sos", "war", "duel"):
-			game.append("pd")
-
-def make_filename():
-
-	for i in range(len(time_info)):
-		new_filename = game[i] + "." + stage[i] + "." + difficulty[i] + "." + time_in_seconds[i] + "." + player[i]
-		filename.append(new_filename)
+			self.game = 'pd'
 
 
-def make_folder():
 
-	print("")
-	print("Attempting to make directories... ")
-	print("")
 
-	for i in range(len(time_info)):
-		
+	def make_filename(self):
+		self.filename = self.game + "." + self.stage + "." + self.difficulty + "." + self.time_in_seconds + "." + self.player + "." + self.rankings_id
+
+
+
+	def make_folder(self):
 		try:
-			#creates directory
-			os.mkdir("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i])
-			print("Directory ", player[i], " created")
+			os.mkdir("temp/" + self.player)
+			print("Directory ", self.player, " created")
+			client.put_object(Bucket='huzi', Key=player, ACL='public')
 		except:
-			continue
-
-	print("_________________________________________")
-	print("")
+			pass
 
 
-def get_player_dupes():
 
-	updated_index = len(time_info) - 1
-
-	for i in range(len(time_info)):
-		# print(updated_index)
-		temp_filename = filename[updated_index]
-
-		my_cursor.execute("SELECT COUNT(*) FROM dupe_checker WHERE filename = (%s)", (filename[updated_index],))
-		num_Of_Dupes = my_cursor.fetchall()[0][0]
-
-		my_cursor.execute("SELECT COUNT(*) FROM video_data WHERE rankings_url = (%s)", (filtered_url[updated_index],))
-		num_Of_rankings_url_duplicates = my_cursor.fetchall()[0][0]
-
-		my_cursor.execute("SELECT COUNT(*) FROM video_data WHERE youtube_url = (%s)", (youtube_url[updated_index],))
-		num_Of_youtube_url_duplicates = my_cursor.fetchall()[0][0]
-
-		my_cursor.execute("SELECT COUNT(*) FROM video_data WHERE rankings_id = (%s)", (rankings_id[updated_index],))
-		num_Of_rankings_id_duplicates = my_cursor.fetchall()[0][0]
+	def check_if_dupe(self, rank_id):
+		config.my_cursor.execute("SELECT COUNT(*) FROM `the-elite`.`the-elite-videos` WHERE rankings_id=(%s)", (rank_id,))
+		return config.my_cursor.fetchall()[0][0]
 
 
-		if num_Of_rankings_id_duplicates != 0:
-			rankings_url.pop(updated_index)
-			filtered_url.pop(updated_index)
-			youtube_url.pop(updated_index)
-			time_info.pop(updated_index)		
-			player.pop(updated_index)
-			stage.pop(updated_index)
-			difficulty.pop(updated_index)
-			time_in_seconds.pop(updated_index)
-			game.pop(updated_index)
-			filename.pop(updated_index)
-			regular_time.pop(updated_index)
-			date_achieved.pop(updated_index)
-			rankings_id.pop(updated_index)
-			extensions.pop(updated_index)
-			updated_index = updated_index - 1
-			continue
 
-
-		if num_Of_Dupes > 0:
-			temp_filename = filename[updated_index]
-			new_filename = filename[updated_index]
-			new_filename = new_filename[:-4]
-			
-			filename[updated_index] = str(new_filename) + "(" + str(num_Of_Dupes) + ").mp4"
-			
-		add_Filename = "INSERT INTO dupe_checker (filename, rankings_id) VALUES (%s, %s)"
-		my_cursor.execute(add_Filename, (temp_filename, rankings_id[updated_index]))
-		mydb.commit() #save
-
-		updated_index = updated_index - 1
-
-def download_video():
-
-	global dead_url
-
-	for i in range(len(time_info)):
-
+	def download_video(self):
 		print("")
-		print("Stage: " + stage[i])
-		print("Player: " + player[i])
-		print("Filename: " + filename[i])
-		print("Date: " + date_achieved[i])
+		print("Stage: " + self.stage)
+		print("Player: " + self.player)
+		print("Filename: " + self.filename)
+		print("Date: " + self.date_achieved)
 
-		os.chdir("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\")
+		os.chdir("the-elite-videos/" + self.player + "/")
 
 		try:
-			ydl_opts = {'outtmpl' : filename[i] + '.' + '%(ext)s', 'noplaylist' : True, 'format' : 'bestvideo+bestaudio/best'}
-			# "merge-output-format": "mp4"
+			ydl_opts = {'outtmpl' : self.filename + '.' + '%(ext)s', 'noplaylist' : True, 'format' : 'bestvideo+bestaudio/best'}
 
 			with youtube_dl.YoutubeDL(ydl_opts) as ydl:
 				print("")
-				ydl.download([youtube_url[i]])
-				dead_url.append(0)
+				ydl.download([self.youtube_url])
+				self.dead_url = 0
 				print("")
-
-		# except youtube_dl.utils.DownloadError:
 		except:
-			if youtube_url[i][0:22] == "https://www.twitch.tv/":
-				print("")
-				print("Twitch URL not valid. Contact The-Elite Proof Moderator or Historian")
-				dead_url.append(1)
-			elif youtube_url[i][0:24] == "http://www.thengamer.com":
-					print("")
-					print("Cannot download from thengamer.com")
-					dead_url.append(1)
-			elif youtube_url[i][0:25] == "http://www.activigor.com/":
-					print("")
-					print("Cannot download from activigor.com")
-					dead_url.append(1)
-			else:
-				print("")
-				print("YouTube URL not valid. Contact The-Elite Proof Moderator or Historian")
-				dead_url.append(1)
-				print("")
+			self.dead_url = 1
 
 
-def update_database():
 
-	addRow = "INSERT INTO video_data (game, stage, difficulty, time_in_seconds, regular_time, player, extension, youtube_url, published_date, rankings_url, filename, dead_youtube_url, rankings_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-
-	for i in range(len(time_info)):
-		record = (game[i], stage[i], difficulty[i], str(int(time_in_seconds[i])), regular_time[i], player[i], extensions[i], youtube_url[i], date_achieved[i], filtered_url[i], filename[i], dead_url[i], rankings_id[i])
-		my_cursor.execute(addRow, record)
-		mydb.commit() #save
-
-	print("")
-	print("Finished. Added info to database")
-	print("")
+	def get_extension(self):
+		if os.path.isfile(self.filename + '.mkv'):
+		    self.extension = '.mkv'
+		elif os.path.isfile(self.filename + '.mp4'):
+		    self.extension = '.mp4'
+		elif os.path.isfile(self.filename + '.webm'):
+		    self.extension = '.webm'
 
 
-def set_extension():
-	for i in range(len(time_info)):
 
-		if os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".3pg") == True:
-			filename[i] = filename[i] + ".3pg"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + "aac") == True:
-			filename[i] = filename[i] + ".aac"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".flv") == True:
-			filename[i] = filename[i] + ".flv"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".m4a") == True:
-			filename[i] = filename[i] + ".m4a"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".mp4") == True:
-			filename[i] = filename[i] + ".mp4"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".ogg") == True:
-			filename[i] = filename[i] + ".ogg"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".wav") == True:
-			filename[i] = filename[i] + ".wav"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".webm") == True:
-			filename[i] = filename[i] + ".webm"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".mov") == True:
-			filename[i] = filename[i] + ".mov"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".avi") == True:
-			filename[i] = filename[i] + ".avi"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".mpeg") == True:
-			filename[i] = filename[i] + ".mpeg"
-		elif os.path.isfile("D:\\Truth Saver RSS Backup\\the-elite-videos\\" + player[i] + "\\" + filename[i] + ".mkv") == True:
-			filename[i] = filename[i] + ".mkv"
+	def insert_file(self):
+		try:
+			config.client.upload_file(self.filename + self.extension, 'huzi', self.player + "/" + self.filename + self.extension)
+			dead_url[i] = 0
+			print("FILE UPLOADED")
+		except:
+			pass
 
-		extensions.append(filename[i].split(".")[-1])
-
-
-def insert_file():
-
-	#Use the API Keys you generated at Digital Ocean
-	ACCESS_ID = 'GG2YUCIOBWQ4K3PJGZMY'
-	SECRET_KEY = 'Anxe4cD9oqks2hGhy1rUdvhgd/nUKmkIsc42LE3wKno'
-	BUCKET_NAME = 'huzi'
-
-	for i in range(len(time_info)):
-		# Initiate session
-		client = boto3.client('s3',
-		                    region_name = 'nyc3', #enter your own region_name
-		                    endpoint_url = 'https://nyc3.digitaloceanspaces.com', #enter your own endpoint url
-		                    aws_access_key_id = ACCESS_ID,
-		                    aws_secret_access_key = SECRET_KEY
-		)
-
-		client.upload_file('D:\\Truth Saver RSS Backup\\the-elite-videos\\' + player[i] + '\\' + filename[i], BUCKET_NAME, player[i] + "/" + filename[i], ExtraArgs = {'ContentType': "video/mp4"})
 
 def main():
-	refresh.delete_Table()
-	for month in range(1):
-		# monthlis = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"]
-		currYear = "2021"
-		currMonth = "06"
+    Video()
 
-		print("")
-		# refresh.delete_Table()
-		get_time_url(currYear, currMonth)
-		remove_duplicates()
-		get_yt_url()
-		get_time_info()
-		get_rankings_url_id()
-		make_player_name()
-		make_difficulty_and_stage()
-		make_time()
-		make_regular_time()
-		make_game()
-		make_filename()
-		make_folder()
-		get_player_dupes()
-		download_video()
-		set_extension()
-		# insert_file()
-		update_database()
-
-		for i in range(len(time_info)):
-			print(filename[i])
-
-		rankings_url.clear()	#empties list
-		filtered_url.clear()	
-		youtube_url.clear()		
-		time_info.clear()		
-		player.clear()
-		stage.clear()
-		difficulty.clear()
-		time_in_seconds.clear()
-		game.clear()
-		filename.clear()
-		regular_time.clear()
-		date_achieved.clear()
-		dead_url.clear()
-		rankings_id.clear()
-		
-		print("")
-		
-main()
+if __name__ == "__main__":
+	main()
