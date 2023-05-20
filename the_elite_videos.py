@@ -26,11 +26,11 @@ class Video:
 		self.date_achieved = None
 		self.dead_url = None
 		self.extension = None
-		self.get_rankings_url(year, month)
+		self.get_rankings_url(YEAR, MONTH)
 
 
 
-	def get_rankings_url(self, year, month): # GET ALL TIMES FROM www.rankings.the-elite.net/history/year/month
+	def get_rankings_url(self, YEAR, MONTH): # GET ALL TIMES FROM www.rankings.the-elite.net/history/year/month
 		rankings_url = []
 		http = httplib2.Http()
 		status, response = http.request(self.base_url + '/history/' +str(YEAR) + '/' + str(MONTH))
