@@ -7,8 +7,8 @@ import requests
 from datetime import datetime
 import config
 
-year = "1999"
-month = "04"
+YEAR = "1999"
+MONTH = "04"
 
 class Video:
 	def __init__(self):
