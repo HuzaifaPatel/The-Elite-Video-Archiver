@@ -218,6 +218,12 @@ class Video:
 
 
 	def download_video(self):
+		print("")
+		print("Stage: " + stage[i])
+		print("Player: " + player[i])
+		print("Filename: " + filename[i])
+		print("Date: " + date_achieved[i])
+
 		os.chdir("the-elite-videos/" + self.player + "/")
 
 		try:
