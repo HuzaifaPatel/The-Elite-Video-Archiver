@@ -204,7 +204,7 @@ class Video:
 
 	def make_folder(self):
 		try:
-			os.mkdir("temp/" + self.player)
+			os.mkdir("the-elite-videos/" + self.player)
 			print("Directory ", self.player, " created")
 			client.put_object(Bucket='huzi', Key=player, ACL='public')
 		except:
