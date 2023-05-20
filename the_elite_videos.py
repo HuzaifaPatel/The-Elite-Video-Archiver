@@ -29,7 +29,7 @@ class Video:
 		self.get_rankings_url(year, month)
 
 
-	def get_rankings_url(self, year, month): #get all times from www.rankings.the-elite.net/history/year/month
+	def get_rankings_url(self, year, month): # GET ALL TIMES FROM www.rankings.the-elite.net/history/year/month
 		rankings_url = []
 		http = httplib2.Http()
 		status, response = http.request(self.base_url + '/history/' +str(year) + '/' + str(month))
@@ -37,17 +37,17 @@ class Video:
 
 		for proven_time in history.find_all('a', href=True):
 			if 'time' in proven_time['href']:
-				# if not int(self.check_if_dupe(proven_time['href'].split("/")[-1])): # CHECK IF DUPE RIGHT AWAY. SAVE TIME.
-				if self.has_video(self.base_url + proven_time['href']):
-					self.rankings_url = self.base_url + proven_time['href']
-					self.rankings_id = proven_time['href'].split("/")[-1]
-					self.get_time_info()
-					self.make_game()
-					self.make_filename()
-					self.make_folder()
-					self.download_video()
-					self.get_extension()
-					self.insert_file()
+				if not int(self.check_if_dupe(proven_time['href'].split("/")[-1])): # CHECK IF DUPE RIGHT AWAY. SAVE TIME.
+					if self.has_video(self.base_url + proven_time['href']):
+						self.rankings_url = self.base_url + proven_time['href']
+						self.rankings_id = proven_time['href'].split("/")[-1]
+						self.get_time_info()
+						self.make_game()
+						self.make_filename()
+						self.make_folder()
+						self.download_video()
+						self.get_extension()
+						self.insert_file()
 
 
 
