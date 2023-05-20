@@ -7,7 +7,7 @@ import requests
 from datetime import datetime
 import config
 
-YEAR = "1999"
+YEAR = "2022"
 MONTH = "04"
 
 class Video:
@@ -33,7 +33,7 @@ class Video:
 	def get_rankings_url(self, year, month): # GET ALL TIMES FROM www.rankings.the-elite.net/history/year/month
 		rankings_url = []
 		http = httplib2.Http()
-		status, response = http.request(self.base_url + '/history/' +str(year) + '/' + str(month))
+		status, response = http.request(self.base_url + '/history/' +str(YEAR) + '/' + str(MONTH))
 		history = BeautifulSoup(response, 'html.parser')
 
 		for proven_time in history.find_all('a', href=True):
@@ -49,6 +49,7 @@ class Video:
 						self.download_video()
 						self.get_extension()
 						self.insert_file()
+						self.update_database()
 
 
 
