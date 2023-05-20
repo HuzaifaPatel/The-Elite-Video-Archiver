@@ -29,6 +29,7 @@ class Video:
 		self.get_rankings_url(year, month)
 
 
+
 	def get_rankings_url(self, year, month): # GET ALL TIMES FROM www.rankings.the-elite.net/history/year/month
 		rankings_url = []
 		http = httplib2.Http()
@@ -77,6 +78,7 @@ class Video:
 			self.get_time_in_seconds(index_info)
 
 
+
 	def get_date(self, soup):
 		date = str(soup.find_all(['li','strong']))
 		date = date[date.find("<li><strong>Achieved:</strong>")+31:]
@@ -89,13 +91,11 @@ class Video:
 
 
 
-
 	def get_name(self, index_info):	
 		by = index_info.index("by")
 		name = index_info[by+3:]
 		name = name.replace(" ","_")
 		self.player = name
-
 
 
 
@@ -148,8 +148,6 @@ class Video:
 
 
 
-
-
 	def make_regular_time(self, _time):
 		if(_time == "N/A"): # if player submits a time = to 20:00
 			self.regular_time = "20:00"
@@ -157,8 +155,6 @@ class Video:
 			self.regular_time = time.strftime("%H:%M:%S", time.gmtime(int(_time)))
 		else:
 			self.regular_time = time.strftime("%M:%S", time.gmtime(int(_time)))
-
-
 
 
 
@@ -260,6 +256,7 @@ class Video:
 			print("FILE UPLOADED")
 		except:
 			pass
+
 
 
 def main():
