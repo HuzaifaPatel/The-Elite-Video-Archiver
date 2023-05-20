@@ -252,6 +252,36 @@ class Video:
 			pass
 
 
+	def update_database(self):
+
+		addRow = "INSERT INTO video_data (game, stage, difficulty, time_in_seconds, regular_time, player, extension, youtube_url, published_date, rankings_url, filename, dead_youtube_url, rankings_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+
+		record = (	
+					self.game, 
+					self.stage, 
+					self.difficulty, 
+					self.time_in_seconds, 
+					self.regular_time, 
+					self.player, 
+					self.extension,
+					self.youtube_url, 
+					self.date_achieved, 
+					self.filtered_url, 
+					self.filename, 
+					self.dead_url, 
+					self.rankings_id
+				)
+
+
+		config.my_cursor.execute(addRow, record)
+		config.mydb.commit() #save
+
+		print("")
+		print("Finished. Added info to database")
+		print("")
+
+
+
 
 def main():
     Video()
