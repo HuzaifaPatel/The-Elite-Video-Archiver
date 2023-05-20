@@ -102,19 +102,19 @@ class Video:
 	def get_difficulty(self, index_info):
 		if "Secret Agent" in index_info.split("by")[0]:
 			self.difficulty = "SA"
-			self.stage = index_info[0:index_info.index("Secret")-1].lower()
+			self.stage = index_info[0:index_info.index("Secret") - 1].lower()
 		elif "Special Agent" in index_info.split("by")[0]:
 			self.difficulty = "SA"
-			self.stage = index_info[0:index_info.index("Special")-1].lower()
+			self.stage = index_info[0:index_info.index("Special") - 1].lower()
 		elif "00" in index_info.split("by")[0]:
 			self.difficulty = "00 Agent"
-			self.stage = index_info[0:index_info.index("00")-1].lower()
+			self.stage = index_info[0:index_info.index("00") - 1].lower()
 		elif "Perfect" in index_info.split("by")[0]:
 			self.difficulty = "Perfect Agent"
-			self.stage = index_info[0:index_info.index("Perfect Agen")-1].lower()
+			self.stage = index_info[0:index_info.index("Perfect Agen") - 1].lower()
 		else:
 			self.difficulty = "Agent"
-			self.stage = index_info[0:index_info.index("Agent")-1].lower()
+			self.stage = index_info[0:index_info.index("Agent") - 1].lower()
 
 
 
@@ -166,7 +166,7 @@ class Video:
 		# G O L D E N E Y E 0 0 7
 
 		if self.stage in ("surface 1", "bunker 1", "surface 2", "bunker 2"):
-			self.stage = self.stage.replace(" ","")
+			self.stage = self.stage.replace(" ", "")
 
 		# P E R F E C T D A R K
 
@@ -174,7 +174,7 @@ class Video:
 			self.stage = "af1"
 
 		if self.stage in ("air base", "crash site", "deep sea", "attack ship", "skedar ruins", "maian sos"):
-			self.stage = self.stage.replace(" ","-")
+			self.stage = self.stage.replace(" ", "-")
 
 		if self.stage == "pelagic ii":
 			self.stage = "pelagic"
