@@ -220,10 +220,10 @@ class Video:
 
 	def download_video(self):
 		print("")
-		print("Stage: " + stage[i])
-		print("Player: " + player[i])
-		print("Filename: " + filename[i])
-		print("Date: " + date_achieved[i])
+		print("Stage: " + self.stage)
+		print("Player: " + self.player)
+		print("Filename: " + self.filename)
+		print("Date: " + self.date_achieved)
 
 		os.chdir("the-elite-videos/" + self.player + "/")
 
