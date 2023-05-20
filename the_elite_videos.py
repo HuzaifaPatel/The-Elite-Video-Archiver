@@ -111,7 +111,7 @@ class Video:
 			self.stage = index_info[0:index_info.index("00") - 1].lower()
 		elif "Perfect" in index_info.split("by")[0]:
 			self.difficulty = "Perfect Agent"
-			self.stage = index_info[0:index_info.index("Perfect Agen") - 1].lower()
+			self.stage = index_info[0:index_info.index("Perfect") - 1].lower()
 		else:
 			self.difficulty = "Agent"
 			self.stage = index_info[0:index_info.index("Agent") - 1].lower()
