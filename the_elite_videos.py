@@ -26,6 +26,7 @@ class Video:
 		self.date_achieved = None
 		self.dead_url = None
 		self.extension = None
+		self.file_exists = None
 		self.get_rankings_url(YEAR, MONTH)
 
 
@@ -48,7 +49,7 @@ class Video:
 						self.make_folder()
 						self.download_video()
 						self.get_extension()
-						self.insert_file()
+						# self.insert_file()
 						self.update_database()
 
 
@@ -108,10 +109,10 @@ class Video:
 			self.difficulty = "SA"
 			self.stage = index_info[0:index_info.index("Special") - 1].lower()
 		elif "00" in index_info.split("by")[0]:
-			self.difficulty = "00 Agent"
+			self.difficulty = "00A"
 			self.stage = index_info[0:index_info.index("00") - 1].lower()
 		elif "Perfect" in index_info.split("by")[0]:
-			self.difficulty = "Perfect Agent"
+			self.difficulty = "PA"
 			self.stage = index_info[0:index_info.index("Perfect") - 1].lower()
 		else:
 			self.difficulty = "Agent"
@@ -203,10 +204,11 @@ class Video:
 
 
 	def make_folder(self):
+		os.chdir("/home/huzi/Projects/the-elite-videos-master/versions/V 3.0")
+
 		try:
 			os.mkdir("the-elite-videos/" + self.player)
 			print("Directory ", self.player, " created")
-			client.put_object(Bucket='huzi', Key=player, ACL='public')
 		except:
 			pass
 
@@ -234,9 +236,11 @@ class Video:
 				print("")
 				ydl.download([self.youtube_url])
 				self.dead_url = 0
+				self.file_exists = 1
 				print("")
 		except:
 			self.dead_url = 1
+			self.file_exists = 0
 
 
 
@@ -247,6 +251,14 @@ class Video:
 		    self.extension = '.mp4'
 		elif os.path.isfile(self.filename + '.webm'):
 		    self.extension = '.webm'
+		elif os.path.isfile(self.filename + '.mov'):
+		    self.extension = '.mov'
+		elif os.path.isfile(self.filename + '.avi'):
+		    self.extension = '.avi'
+		elif os.path.isfile(self.filename + '.mpeg'):
+		    self.extension = '.mpeg'
+		elif os.path.isfile(self.filename + '.mpg'):
+		    self.extension = '.mpg'
 
 
 
@@ -261,7 +273,7 @@ class Video:
 
 	def update_database(self):
 
-		addRow = "INSERT INTO video_data (game, stage, difficulty, time_in_seconds, regular_time, player, extension, youtube_url, published_date, rankings_url, filename, dead_youtube_url, rankings_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+		addRow = "INSERT INTO `the-elite`.`the-elite-videos` (game, stage, difficulty, time_in_seconds, regular_time, player, extension, youtube_url, published_date, rankings_url, filename, dead_youtube_url, rankings_id, file_exists) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
 		record = (	
 					self.game, 
@@ -272,21 +284,21 @@ class Video:
 					self.player, 
 					self.extension,
 					self.youtube_url, 
-					self.date_achieved, 
-					self.filtered_url, 
+					self.date_achieved,
+					self.rankings_url,
 					self.filename, 
 					self.dead_url, 
-					self.rankings_id
+					self.rankings_id,
+					self.file_exists
 				)
 
-
+	
 		config.my_cursor.execute(addRow, record)
 		config.mydb.commit() #save
 
 		print("")
 		print("Finished. Added info to database")
 		print("")
-
 
 
 
