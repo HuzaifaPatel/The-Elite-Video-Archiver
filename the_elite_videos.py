@@ -6,12 +6,11 @@ import yt_dlp as youtube_dl
 import requests
 from datetime import datetime
 import config
+import threading
 
-YEAR = "2022"
-MONTH = "04"
 
 class Video:
-	def __init__(self):
+	def __init__(self, YEAR, MONTH):
 		self.base_url = "https://rankings.the-elite.net"
 		self.rankings_url = None
 		self.rankings_id = None
@@ -303,7 +302,12 @@ class Video:
 
 
 def main():
-    Video()
+	YEAR = "2022"
+	
+	for MONTH in range(1,3):
+		thread = threading.Thread(target=Video, args=(YEAR, MONTH))
+		thread.start()
+		print("Thread:" + str(MONTH))
 
 if __name__ == "__main__":
 	main()
