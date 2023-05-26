@@ -304,10 +304,8 @@ class Video:
 def main():
 	YEAR = "2022"
 	
-	for MONTH in range(1,3):
-		thread = threading.Thread(target=Video, args=(YEAR, MONTH))
-		thread.start()
-		print("Thread:" + str(MONTH))
+	for MONTH in range(1,13):
+		Video(YEAR, MONTH)
 
 if __name__ == "__main__":
 	main()
