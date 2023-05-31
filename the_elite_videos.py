@@ -7,6 +7,7 @@ import requests
 from datetime import datetime
 import config
 import threading
+import sys
 
 
 class Video:
@@ -38,7 +39,7 @@ class Video:
 
 		for proven_time in history.find_all('a', href=True):
 			if 'time' in proven_time['href']:
-				if not int(self.check_if_dupe(proven_time['href'].split("/")[-1])): # CHECK IF DUPE RIGHT AWAY. SAVE TIME.
+				if not int(self.check_if_dupe(proven_time['href'].split("/")[-1])): # CHECK IF ALREADY IN DB..RIGHT AWAY. SAVE TIME.
 					if self.has_video(self.base_url + proven_time['href']):
 						self.rankings_url = self.base_url + proven_time['href']
 						self.rankings_id = proven_time['href'].split("/")[-1]
@@ -107,10 +108,10 @@ class Video:
 		elif "Special Agent" in index_info.split("by")[0]:
 			self.difficulty = "SA"
 			self.stage = index_info[0:index_info.index("Special") - 1].lower()
-		elif "00" in index_info.split("by")[0]:
+		elif "00 Agent" in index_info.split("by")[0]:
 			self.difficulty = "00A"
 			self.stage = index_info[0:index_info.index("00") - 1].lower()
-		elif "Perfect" in index_info.split("by")[0]:
+		elif "Perfect Agent" in index_info.split("by")[0]:
 			self.difficulty = "PA"
 			self.stage = index_info[0:index_info.index("Perfect") - 1].lower()
 		else:
@@ -275,23 +276,10 @@ class Video:
 		addRow = "INSERT INTO `the-elite`.`the-elite-videos` (game, stage, difficulty, time_in_seconds, regular_time, player, extension, youtube_url, published_date, rankings_url, filename, dead_youtube_url, rankings_id, file_exists) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
 
 		record = (	
-					self.game, 
-					self.stage, 
-					self.difficulty, 
-					self.time_in_seconds, 
-					self.regular_time, 
-					self.player, 
-					self.extension,
-					self.youtube_url, 
-					self.date_achieved,
-					self.rankings_url,
-					self.filename, 
-					self.dead_url, 
-					self.rankings_id,
-					self.file_exists
+					self.game, self.stage, self.difficulty, self.time_in_seconds, self.regular_time, self.player, self.extension,
+					self.youtube_url, self.date_achieved, self.rankings_url, self.filename, self.dead_url, self.rankings_id, self.file_exists
 				)
 
-	
 		config.my_cursor.execute(addRow, record)
 		config.mydb.commit() #save
 
@@ -302,10 +290,9 @@ class Video:
 
 
 def main():
-	YEAR = "2022"
-	
-	for MONTH in range(1,13):
-		Video(YEAR, MONTH)
+	if len(sys.argv) > 1:
+		for MONTH in range(1,13):
+			Video(int(sys.argv[1]), MONTH)
 
 if __name__ == "__main__":
 	main()
